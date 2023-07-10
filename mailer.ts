@@ -15,9 +15,9 @@ export class Mailer {
             domain: string,
             key: string
         },
-        private onQueue: (text: string, html: string) => void,
-        private onSend: () => void,
-        private getFailedMails: () => { receiver: string, subject: string, text: string, html: string }[]
+        private onQueue: (text: string, html: string) => Promise<void>,
+        private onSend: () => Promise<void>,
+        private getFailedMails: () => Promise<{ receiver: string, subject: string, text: string, html: string }[]>
     ) {
 		this.transporter = createTransport(configuration);
 
@@ -40,14 +40,14 @@ export class Mailer {
         const text = rendered.textContent;
         const html = rendered.outerHTML;
 
-        this.onQueue(text, html);
+        await this.onQueue(text, html);
 
 		await this.push(receiver, mailComponent.subject, text, html)
             .catch(error => console.log(error));
 	}
 
     private async resend() {
-        for (const mail of this.getFailedMails()) {
+        for (const mail of await this.getFailedMails()) {
             await this.push(mail.receiver, mail.subject, mail.text, mail.html)
                 .catch(error => console.log(error));
 		}
@@ -72,7 +72,7 @@ export class Mailer {
                 if (error) {
                     reject(error);
                 } else {
-                    this.onSend();
+                    await this.onSend();
 
                     done();
                 }
