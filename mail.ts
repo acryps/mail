@@ -1,7 +1,8 @@
 type MailNodeChild = (string | number | boolean | MailNode) | MailNodeChild[];
 
 export class MailNode {
-    private ignoredContentElements: string[] = ['head', 'svg', 'button', 'script'];
+    static ignoredContentElements: string[] = ['head', 'svg', 'button', 'script'];
+    static lineBreakingNodes: string[] = [];
 
     constructor(
         private tagName: string,
@@ -12,12 +13,12 @@ export class MailNode {
     get textContent() {
         let content = '';
 
-        if (!this.ignoredContentElements.includes(this.tagName)) {
+        if (!MailNode.ignoredContentElements.includes(this.tagName)) {
             for (const child of this.children) {
                 if (child instanceof MailNode) {
                     content += child.textContent;
 
-                    if (child.attributes?.class == 'spacer') {
+                    if (MailNode.lineBreakingNodes.includes(this.tagName) || child.attributes && MailNode.lineBreakingNodes.includes(child.attributes.class)) {
                         content += '\n';
                     }
                 } else if (Array.isArray(child)) {
