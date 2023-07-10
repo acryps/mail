@@ -1,4 +1,4 @@
-import { MailComponent } from ".";
+import { MailComponent } from "./mail";
 import { Transporter, createTransport } from "nodemailer";
 
 export class Mailer {
