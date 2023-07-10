@@ -1,0 +1,13 @@
+{
+	"compilerOptions": {
+		"outDir": "dist",
+		"module": "CommonJS",
+		"target": "es6",
+		"declaration": true,
+		"jsx": "react",
+		"jsxFactory": "MailComponent.createElement",
+		"lib": [
+			"ESNext"
+		]
+	}
+}

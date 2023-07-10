@@ -1,0 +1,26 @@
+{
+	"name": "mail",
+	"version": "1.0.0",
+	"description": "basic tsx mailer",
+	"author": "Acryps",
+	"license": "GPL-3.0-only",
+	"keywords": [
+		"acryps",
+		"acryps mail",
+		"mailer",
+		"tsx mailer"
+	],
+	"main": "dist/index.js",
+	"typings": "dist/index.d.ts",
+	"scripts": {
+		"preversion": "git pull",
+		"postversion": "git push",
+		"prepare": "tsc"
+	},
+	"dependencies": {
+		"nodemailer": "^6.9.3"
+	},
+	"devDependencies": {
+		"@types/node": "^18.11.15"
+	}
+}
