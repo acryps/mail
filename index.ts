@@ -1,3 +1,3 @@
 export * from './polyfills';
-export * from './mail';
+export * from './mail-component';
 export * from './mailer';
