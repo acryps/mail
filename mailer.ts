@@ -10,31 +10,29 @@ Object.defineProperty(String.prototype, 'german', {
 	}
 });
 
-export class Mailer<TStoredMail> {
+export type MailContent = {
+	subject: string;
+	text: string;
+	html: string;
+
+	recipients: string | string[];
+}
+
+export class Mailer<TStoredMail, TStoredRecipient> {
 	resendInterval: number = 5 * 60 * 1000;
 
-	getUnsent: () => Promise<TStoredMail[]>;
-	onSend: (mail: TStoredMail) => void;
-	onError: (mail: TStoredMail, error: Error) => void;
+	getUnsent = async () => [] as TStoredMail[];
+	create = async (recipients: TStoredRecipient | TStoredRecipient[], mail: MailContent) => new this.StoredMail();
+	toMailContent = async (model: TStoredMail) => ({
+		subject: (model as any).subject,
+		text: (model as any).text,
+		html: (model as any).html,
+		recipients: (model as any).recipients
+	} as MailContent);
+	toEmail = (recipient: TStoredRecipient) => typeof recipient == 'string' ? recipient : (recipient as any).email;
 
-	getSubject = async (mail: TStoredMail) => (mail as any).subject as string;
-	setSubject = async (mail: TStoredMail, value: string) => { (mail as any).subject = value };
-
-	getRecipients = async (mail: TStoredMail) => (mail as any).recipients as string | string[];
-	setRecipients = async (mail: TStoredMail, value: string | string[]) => { (mail as any).recipients = value };
-
-	getText = async (mail: TStoredMail) => (mail as any).text as string;
-	setText = async (mail: TStoredMail, value: string) => { (mail as any).text = value };
-
-	getHypertextBody = async (mail: TStoredMail) => (mail as any).html;
-	setHypertextBody = async (mail: TStoredMail, value: string) => { (mail as any).html = value };
-
-	create = async (mail: TStoredMail) => (mail as any).create();
-	markAsSent = async (mail: TStoredMail) => {
-		(mail as any).sent = new Date();
-
-		(mail as any).update();
-	}
+	onSendSuccess = async (model: TStoredMail) => {};
+	onSendError = async (model: TStoredMail, mail: MailContent, error: Error) => {};
 
 	private transporter: Transporter;
 	private dkim: {
@@ -44,7 +42,7 @@ export class Mailer<TStoredMail> {
 	};
 
 	constructor(
-		private readonly storedMailConstructor: new () => TStoredMail,
+		private readonly StoredMail: new () => TStoredMail,
 		public readonly senderEmail: string,
 		public readonly configuration: object
 	) {
@@ -71,37 +69,38 @@ export class Mailer<TStoredMail> {
 		}
 	}
 
-	async send(mailComponent: MailComponent, recipients: string | string[], language: string) {
+	async send(mailComponent: MailComponent, recipients: TStoredRecipient | TStoredRecipient[], language: string) {
 		await mailComponent.load();
 
 		// Set language & render sync to ensure correct language in translate polyfill
 		renderingLanguage = language;
 		const rendered = mailComponent.render();
 
-		const model = new this.storedMailConstructor();
-		this.setSubject(model, mailComponent.subject);
-		this.setHypertextBody(model, rendered.outerHTML);
-		this.setText(model, rendered.textContent);
-		this.setRecipients(model, recipients);
-
-		await this.create(model);
+		const model: TStoredMail = await this.create(recipients, {
+			subject: mailComponent.subject,
+			text: rendered.textContent,
+			html: rendered.outerHTML,
+			recipients: Array.isArray(recipients) ? recipients.map(recipient => this.toEmail(recipient)) : this.toEmail(recipients)
+		});
 
 		this.push(model);
 	}
 
 	private async resend() {
-		for (const mail of await this.getUnsent() ?? []) {
+		for (const mail of await this.getUnsent()) {
 			await this.push(mail);
 		}
 	}
 
-	private async push(mail: TStoredMail) {
+	private async push(model: TStoredMail) {
+		const mail = await this.toMailContent(model);
+
 		const options: any = {
 			from: this.senderEmail,
-			to: await this.getRecipients(mail),
-			subject: await this.getSubject(mail),
-			text: await this.getText(mail),
-			html: await this.getHypertextBody(mail),
+			to: mail.recipients,
+			subject: mail.subject,
+			text: mail.text,
+			html: mail.html,
 		};
 
 		if (this.dkim) {
@@ -111,12 +110,11 @@ export class Mailer<TStoredMail> {
 		return new Promise<void>((done, reject) => {
 			this.transporter.sendMail(options, async error => {
 				if (error) {
-					this.onError(mail, error);
+					this.onSendError(model, mail, error);
 
 					reject(error);
 				} else {
-					this.markAsSent(mail);
-					this.onSend(mail);
+					this.onSendSuccess(model);
 
 					done();
 				}
