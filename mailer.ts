@@ -14,25 +14,17 @@ export type MailContent = {
 	subject: string;
 	text: string;
 	html: string;
+}
 
-	recipients: string | string[];
+export type SendableMail = MailContent & {
+	recipients: string | string[]
 }
 
 export class Mailer<TStoredMail, TStoredRecipient> {
 	resendInterval: number = 5 * 60 * 1000;
 
-	getUnsent = async () => [] as TStoredMail[];
-	create = async (recipients: TStoredRecipient | TStoredRecipient[], mail: MailContent) => new this.StoredMail();
-	toMailContent = async (model: TStoredMail) => ({
-		subject: (model as any).subject,
-		text: (model as any).text,
-		html: (model as any).html,
-		recipients: (model as any).recipients
-	} as MailContent);
-	toEmail = (recipient: TStoredRecipient) => typeof recipient == 'string' ? recipient : (recipient as any).email;
-
-	onSendSuccess = async (model: TStoredMail) => {};
-	onSendError = async (model: TStoredMail, mail: MailContent, error: Error) => {};
+	onSendSuccess = async (storedMail: TStoredMail) => {};
+	onSendError = async (storedMail: TStoredMail, sendableMail: SendableMail, error: Error) => {};
 
 	private transporter: Transporter;
 	private dkim: {
@@ -42,9 +34,11 @@ export class Mailer<TStoredMail, TStoredRecipient> {
 	};
 
 	constructor(
-		private readonly StoredMail: new () => TStoredMail,
-		public readonly senderEmail: string,
-		public readonly configuration: object
+		public readonly sender: string,
+		public readonly configuration: object,
+		private createStoredMail: (recipients: TStoredRecipient | TStoredRecipient[], mailContent: MailContent) => Promise<TStoredMail>,
+		private toSendableMail: (storedMail: TStoredMail) => Promise<SendableMail>,
+		private unsentQueue: TStoredMail[] = []
 	) {
 		this.transporter = createTransport(configuration);
 
@@ -76,27 +70,26 @@ export class Mailer<TStoredMail, TStoredRecipient> {
 		renderingLanguage = language;
 		const rendered = mailComponent.render();
 
-		const model: TStoredMail = await this.create(recipients, {
+		const model: TStoredMail = await this.createStoredMail(recipients, {
 			subject: mailComponent.subject,
 			text: rendered.textContent,
-			html: rendered.outerHTML,
-			recipients: Array.isArray(recipients) ? recipients.map(recipient => this.toEmail(recipient)) : this.toEmail(recipients)
+			html: rendered.outerHTML
 		});
 
 		this.push(model);
 	}
 
 	private async resend() {
-		for (const mail of await this.getUnsent()) {
-			await this.push(mail);
+		for (let index = 0; index < this.unsentQueue.length; index++) {
+			await this.push(this.unsentQueue.shift());
 		}
 	}
 
 	private async push(model: TStoredMail) {
-		const mail = await this.toMailContent(model);
+		const mail = await this.toSendableMail(model);
 
 		const options: any = {
-			from: this.senderEmail,
+			from: this.sender,
 			to: mail.recipients,
 			subject: mail.subject,
 			text: mail.text,
@@ -110,6 +103,8 @@ export class Mailer<TStoredMail, TStoredRecipient> {
 		return new Promise<void>((done, reject) => {
 			this.transporter.sendMail(options, async error => {
 				if (error) {
+					this.unsentQueue.push(model);
+
 					this.onSendError(model, mail, error);
 
 					reject(error);
