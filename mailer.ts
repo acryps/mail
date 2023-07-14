@@ -17,13 +17,12 @@ export type MailContent = {
 }
 
 export type SendableMail = MailContent & {
-	recipients: string | string[]
+	recipients: string | string[];
 }
 
 export class Mailer<TStoredMail, TStoredRecipient> {
 	resendInterval: number = 5 * 60 * 1000;
 
-	onSendSuccess = async (storedMail: TStoredMail) => {};
 	onSendError = async (storedMail: TStoredMail, sendableMail: SendableMail, error: Error) => {};
 
 	private transporter: Transporter;
@@ -36,8 +35,9 @@ export class Mailer<TStoredMail, TStoredRecipient> {
 	constructor(
 		public readonly sender: string,
 		public readonly configuration: object,
+		private convertToSendableMail: (storedMail: TStoredMail) => Promise<SendableMail>,
 		private createStoredMail: (recipients: TStoredRecipient | TStoredRecipient[], mailContent: MailContent) => Promise<TStoredMail>,
-		private toSendableMail: (storedMail: TStoredMail) => Promise<SendableMail>,
+		private onSendSuccess: (storedMail: TStoredMail) => Promise<any>,
 		private unsentQueue: TStoredMail[] = []
 	) {
 		this.transporter = createTransport(configuration);
@@ -76,7 +76,7 @@ export class Mailer<TStoredMail, TStoredRecipient> {
 			html: rendered.outerHTML
 		});
 
-		this.push(model);
+		await this.push(model);
 	}
 
 	private async resend() {
@@ -86,7 +86,7 @@ export class Mailer<TStoredMail, TStoredRecipient> {
 	}
 
 	private async push(model: TStoredMail) {
-		const mail = await this.toSendableMail(model);
+		const mail = await this.convertToSendableMail(model);
 
 		const options: any = {
 			from: this.sender,
