@@ -1,12 +1,9 @@
 {
-	"name": "mail",
+	"name": "@acryps/mail",
 	"version": "1.0.0",
-	"description": "basic tsx mailer",
-	"author": "Acryps",
+	"description": "Component based queued mail handler",
 	"license": "GPL-3.0-only",
 	"keywords": [
-		"acryps",
-		"acryps mail",
 		"mailer",
 		"tsx mailer"
 	],
