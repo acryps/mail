@@ -10,7 +10,7 @@ Object.defineProperty(String.prototype, 'german', {
 	}
 });
 
-export type MailContent = {
+export type MailContent = { 
 	subject: string;
 	text: string;
 	html: string;
