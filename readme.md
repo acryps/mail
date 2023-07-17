@@ -1,23 +1,30 @@
 # acryps mail
 Component based queued mail handler
 
-Acryps mail is based on nodemailer. When initializing a mailer you have to define a bunch of things right away.
+> This package uses [nodemailer](https://npmjs.com/nodemailer).
+
+When initializing a mailer you have to define a bunch of things right away.
 
 Mail | TStoredMail, TStoredAddress
 :-- | :--
 Sender address | Email address to send from
 Transport configuration | Nodemailer config for the mail transporter (It has no typings because nodemailer doesn't provide them in the first place)
 Convert to sendable mail | Convert TStoredMail into a sendable mail
-Create | Create mail and addresses
-Mark as sent | Mark mail as sent
-Unsent queue | Optional initial unsent mail queue (fetch from db)
+Create | Create TStoredMail and TStoredAddresses
+Mark as sent | Mark TStoredMail as sent
+Unsent queue | Optional initial unsent TStoredMail queue (fetch from db)
+
 
 These are the minimum requirements for a functional mailer.
 Optionally DKIM can be added to sign the mails in the headers and send error can be handled.
 
-Example usage:
-<pre>
-const mailer = new Mailer&lt;Mail, Address&gt;(
+The mailer also supports localization via polyfills. Defining `<div>{'Hello'.german('Hallo')}</div>` in the component automatically translates according to the preferred language passed in the send method.
+Currently only german translation is supported and the tag to pass into the send method is hardcoded to `de`. This obviously isn't convenient and will be fixed soon.
+
+## Example usage:
+### Setup Mailer
+```
+const mailer = new Mailer<Mail, Address>(
 	'example@domain.com', 
 
 	// Transport configuration
@@ -82,7 +89,50 @@ const mailer = new Mailer&lt;Mail, Address&gt;(
 
 mailer.addDKIM(process.env.MAIL_DOMAIN, process.env.MAIL_DKIM_KEY);
 mailer.onSendError = async (model, mail, error) => console.log(`Mail from ${mailer.sender} to ${mail.recipients} failed to send (id: ${model.id}):`, error);
-</pre>
+```
+
+### Creating Mail Component
+```
+export class ExampleMail extends MailComponent {
+	constructor(
+		private fullname: string
+	) {}
+
+	render(child?: MailComponent): MailNode {
+		return <html>
+			<head>
+				<meta charset="UTF-8" />
+				<meta name="viewport" content="width=device-width,initial-scale=1" />
+				<meta name="x-apple-disable-message-reformatting" />
+			</head>
+			<head>
+				<style>...</style>
+			</head>
+			<body>
+				<div class="line">Hello {this.fullname}</div>
+
+				{child}
+
+				<div class="line">Greetings</div>
+
+				<div class="address">
+					<div class="address-line">Name</div>
+					<div class="address-line">Street</div>
+					<div class="address-line">Place City</div>
+				</div>
+
+				<a href="mailto:example@domain.com">example@domain.com</a>
+			</body>
+			</html>;
+	}
+}
+```
+
+### Sending Mail
+```
+// The passed address is of type TStoredAddress defined previously for the mailer.
+mailer.send(new ExampleMail('Foo Bar'), address, 'de');
+```
 
 ## Sponsoring and support
 This project is sponsored and supported by [ACRYPS](https://acryps.com).
