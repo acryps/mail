@@ -15,7 +15,7 @@
 		"prepare": "tsc"
 	},
 	"dependencies": {
-		"@acryps/language": "^0.0.1",
+		"@acryps/language": "^0.0.2",
 		"nodemailer": "^6.9.3"
 	},
 	"devDependencies": {
