@@ -1,5 +1,5 @@
 
-import { Language, findLanguage } from "@acryps/language/language";
+import { Language, findLanguage } from "@acryps/language";
 import { MailComponent } from "./mail-component";
 import { Transporter, createTransport } from "nodemailer";
 
