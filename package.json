@@ -1,6 +1,6 @@
 {
 	"name": "@acryps/mail",
-	"version": "1.0.2",
+	"version": "1.1.0",
 	"description": "Component based queued mail handler",
 	"license": "GPL-3.0-only",
 	"keywords": [
