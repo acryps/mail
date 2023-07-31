@@ -1,14 +1,7 @@
 
+import { Language, findLanguage } from "@acryps/language/language";
 import { MailComponent } from "./mail-component";
 import { Transporter, createTransport } from "nodemailer";
-
-let renderingLanguage: string;
-
-Object.defineProperty(String.prototype, 'german', {
-	get() {
-		return (translation: string) => renderingLanguage == 'de' ? translation : this;
-	}
-});
 
 export type MailContent = { 
 	subject: string;
@@ -63,11 +56,11 @@ export class Mailer<TStoredMail, TStoredRecipient> {
 		}
 	}
 
-	async send(mailComponent: MailComponent, recipients: TStoredRecipient | TStoredRecipient[], language: string) {
+	async send(mailComponent: MailComponent, recipients: TStoredRecipient | TStoredRecipient[], language: Language | string) {
 		await mailComponent.load();
 
-		// Set language & render sync to ensure correct language in translate polyfill
-		renderingLanguage = language;
+		// Set language & render sync to ensure correct language in compiled body
+		Language.active = typeof language == 'string' ? findLanguage(language) : language;
 		const rendered = mailComponent.render();
 
 		const model: TStoredMail = await this.createStoredMail(recipients, {
