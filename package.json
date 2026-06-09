@@ -1,24 +1,24 @@
 {
 	"name": "@acryps/mail",
 	"version": "1.1.2",
-	"description": "Component based queued mail handler",
+	"description": "Component based mail handler",
 	"license": "GPL-3.0-only",
 	"keywords": [
 		"mailer",
 		"tsx mailer"
 	],
-	"main": "dist/index.js",
-	"typings": "dist/index.d.ts",
+	"type": "commonjs",
+	"main": ".built/index.js",
+	"typings": ".built/index.d.ts",
+	"sideEffects": false,
 	"scripts": {
-		"preversion": "git pull",
-		"postversion": "git push",
+		"build": "tsc",
 		"prepare": "tsc"
 	},
 	"dependencies": {
-		"@acryps/language": "^0.0.3",
-		"nodemailer": "^6.9.3"
+		"nodemailer": "^8.0.10"
 	},
 	"devDependencies": {
-		"@types/node": "^18.11.15"
+		"@types/nodemailer": "^8.0.0"
 	}
 }

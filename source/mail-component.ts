@@ -78,15 +78,13 @@ export class MailNode {
 }
 
 export abstract class MailComponent {
-    styles = [];
-
-    static createElement(tagName: string, attributes: Record<string, any> | null, ...children) {
+	// override node creation
+    static createElement(tagName: string, attributes: Record<string, any> | null, ...children: MailNodeChild[]) {
         return new MailNode(tagName, attributes, children);
     }
 
-    public abstract subject: string;
+    async load(): Promise<void> {}
 
-    async load() {}
-
+    abstract get subject(): string;
     abstract render(child?: MailComponent): MailNode;
 }

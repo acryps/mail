@@ -1,138 +1,85 @@
-# acryps mail
-Component based queued mail handler
+# ACRYPS MAIL
+Component based mail handler
 
 > This package uses [nodemailer](https://npmjs.com/nodemailer).
 
-When initializing a mailer you have to define a bunch of things right away.
+## Usage
 
-Mail | TStoredMail, TStoredAddress
-:-- | :--
-Sender address | Email address to send from
-Transport configuration | Nodemailer config for the mail transporter (It has no typings because nodemailer doesn't provide them in the first place)
-Convert to sendable mail | Convert TStoredMail into a sendable mail
-Create | Create TStoredMail and TStoredAddresses
-Mark as sent | Mark TStoredMail as sent
-Unsent queue | Optional initial unsent TStoredMail queue (fetch from db)
+The sender email address and the SMTP transport configuration is required for a minimal `Mailer`. The configuration options is equivalent to the nodemailer documented [here](https://nodemailer.com/smtp).
 
+Over the builder pattern further customizations can be made to the `Mailer`.
+- **DKIM:** Sign your mails to claim some responsibility for a message
+- **Send Retries:** Define how many times it tries to resend an email upon failure and in what interval. *(By default it only tries once)*
 
-These are the minimum requirements for a functional mailer.
-Optionally DKIM can be added to sign the mails in the headers and send error can be handled.
+Here's an example:
+```ts
+import { Mailer } from "@acryps/mail";
 
-The mailer also supports localization via polyfills. Defining `<div>{'Hello'.german('Hallo')}</div>` in the component automatically translates according to the preferred language passed in the send method.
-Currently only german translation is supported and the tag to pass into the send method is hardcoded to `de`. This obviously isn't convenient and will be fixed soon.
-
-## Example usage:
-### Setup Mailer
-```
-const mailer = new Mailer<Mail, Address>(
-	'example@domain.com', 
-
-	// Transport configuration
+new Mailer(
+	SENDER_ADDRESS,
 	{
-		host: 'smtp.host.com',
-		port: 587,
-		secure: false,
+		host: SMTP_SERVER,
+		port: SMTP_PORT,
+		secure: true,
 		auth: {
-			user: 'example@domain.com',
-			pass: 'securepassword1234'
+			user: SENDER_ADDRESS,
+			pass: SENDER_PASSWORD,
 		},
 		tls: {
 			rejectUnauthorized: false
 		}
-	}, 
-
-	// Convert to sendable mail
-	async model => {
-		const recipients: string[] = await getRecipientEmails(model);
-
-		return {
-			subject: model.subject,
-			text: model.text,
-			html: model.html,
-			recipients
-		}
-	},
-
-	// Create
-	async (addresses, mail) => {
-		const model = new Mail();
-
-		model.created = new Date();
-		model.subject = mail.subject;
-		model.text = mail.text;
-		model.html = mail.html;
-
-		await model.create();
-
-		for (const address of addresses) {
-			const mailAddress = new MailAddress();
-
-			mailAddress.address = address;
-			mailAddress.mail = model;
-
-			await mailAddress.create();
-		}
-
-		return model;
-	},
-	
-	// Mark as sent
-	async model => {
-		model.sent = new Date();
-	
-		await model.update();
-	},
-
-	// Unsent queue
-	await db.mail.where(mail => mail.sent == null).toArray()
-);
-
-mailer.addDKIM(process.env.MAIL_DOMAIN, process.env.MAIL_DKIM_KEY);
-mailer.onSendError = async (model, mail, error) => console.log(`Mail from ${mailer.sender} to ${mail.recipients} failed to send (id: ${model.id}):`, error);
+	}
+)
+	.addDKIM(DKIM_DOMAIN, DKIM_KEY)
+	.enableSendRetry(INTERVAL_IN_SECONDS, MAX_RETRIES);
 ```
 
-### Creating Mail Component
-```
+You can define stylized TSX `MailComponents` to send over the `Mailer`. The subject getter and render method are mandatory to implement. The onload is optional.
+```ts
+import { MailComponent, MailNode } from "@acryps/mail";
+
 export class ExampleMail extends MailComponent {
-	constructor(
-		private fullname: string
-	) {}
+	get subject(): string {
+		return 'Example subject';
+	}
 
-	render(child?: MailComponent): MailNode {
+	onload() {
+		// optionally load something
+	}
+
+	render(): MailNode {
 		return <html>
 			<head>
 				<meta charset="UTF-8" />
 				<meta name="viewport" content="width=device-width,initial-scale=1" />
 				<meta name="x-apple-disable-message-reformatting" />
-			</head>
-			<head>
+
 				<style>...</style>
 			</head>
+
 			<body>
-				<div class="line">Hello {this.fullname}</div>
-
-				{child}
-
-				<div class="line">Greetings</div>
-
-				<div class="address">
-					<div class="address-line">Name</div>
-					<div class="address-line">Street</div>
-					<div class="address-line">Place City</div>
+				<div class="header">
+					<img src='https://example.com/mail-banner.jpg' />
 				</div>
 
-				<a href="mailto:example@domain.com">example@domain.com</a>
+				<div class="main">
+					<h1>This is an example</h1>
+					<p>Lorem vestibulum dui porttitor turpis interdum. Consectetur cursus dui duis purus ex aliquam purus. Risus id leo lectus est pharetra. Sed volutpat dolor metus enim ut.</p>
+				</div>
 			</body>
-			</html>;
+		</html>;
 	}
 }
 ```
 
-### Sending Mail
+Finally a mail can be simply sent like this:
+```ts
+mailer.send(RECIPIENTS, new ExampleMail());
 ```
-// The passed address is of type TStoredAddress defined previously for the mailer.
-mailer.send(new ExampleMail('Foo Bar'), address, 'de');
-```
+
+The recipients can be a single string or an of strings. The send method returns a Promise\<void>.
+
+> It's strongly recommended to use `then`, `catch` and `finally` instead of awaiting the promise to prevent blocking the request for multiple seconds. The `Mailer` is designed as a fire and forget principle.
 
 ## Sponsoring and support
 This project is sponsored and supported by [ACRYPS](https://acryps.com).

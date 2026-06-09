@@ -1,11 +1,15 @@
 {
 	"compilerOptions": {
-		"outDir": "dist",
-		"module": "CommonJS",
-		"target": "es6",
+		"module": "commonjs",
+		"target": "esnext",
 		"declaration": true,
-		"lib": [
-			"esnext"
-		]
-	}
+		"outDir": ".built",
+		"rootDir": "source"
+	},
+	"include": [
+		"source/**/*.ts"
+	],
+	"exclude": [
+		"node_modules"
+	]
 }
